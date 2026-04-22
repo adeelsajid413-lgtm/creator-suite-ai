@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatorSuite AI | SEO & Brand Tools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <nav class="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900 sticky top-0 z-50">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            CreatorSuite AI
+        </h1>
+        <div class="space-x-4">
+            <button onclick="switchTab('brand')" class="hover:text-blue-400 font-medium">Username Tracker</button>
+            <button onclick="switchTab('seo')" class="hover:text-purple-400 font-medium">SEO Redirects</button>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-12 p-6">
+        
+        <section id="brand-section" class="space-y-6">
+            <div class="text-center">
+                <h2 class="text-4xl font-extrabold">Find Your Brand Name</h2>
+                <p class="text-gray-400 mt-2">Check availability across YouTube, Instagram, GitHub & more.</p>
+            </div>
+            
+            <div class="flex gap-2 bg-gray-800 p-2 rounded-xl border border-gray-700">
+                <input type="text" id="usernameInput" placeholder="Enter username..." 
+                    class="w-full p-4 bg-transparent focus:outline-none text-lg">
+                <button onclick="checkUsername()" class="bg-blue-600 px-8 py-4 rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas fa-search"></i> Scan
+                </button>
+            </div>
+
+            <div id="brandResults" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
+                </div>
+        </section>
+
+        <section id="seo-section" class="hidden space-y-6">
+            <div class="text-center">
+                <h2 class="text-4xl font-extrabold text-purple-400">AI SEO Redirect Mapper</h2>
+                <p class="text-gray-400 mt-2">Fix 404 errors by mapping broken links to active pages.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block mb-2 text-sm text-gray-500 uppercase">Broken URLs (One per line)</label>
+                    <textarea id="brokenLinks" placeholder="/old-post-1" 
+                        class="w-full h-48 p-4 rounded-lg bg-gray-800 border border-gray-700 focus:border-purple-500 focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm text-gray-500 uppercase">Active Pages (One per line)</label>
+                    <textarea id="activeLinks" placeholder="/new-post-final" 
+                        class="w-full h-48 p-4 rounded-lg bg-gray-800 border border-gray-700 focus:border-purple-500 focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <button onclick="generateRedirects()" class="w-full bg-purple-600 py-4 rounded-lg font-bold hover:bg-purple-700 transition">
+                Generate .htaccess Rules
+            </button>
+
+            <div id="seoResults" class="hidden p-6 bg-gray-800 rounded-lg border border-green-900 mt-6">
+                <h3 class="text-green-400 font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-code"></i> Copy to your .htaccess file:
+                </h3>
+                <pre id="outputCode" class="text-sm text-gray-300 bg-black p-4 rounded overflow-x-auto"></pre>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Tab Switcher
+        function switchTab(tab) {
+            document.getElementById('brand-section').classList.toggle('hidden', tab !== 'brand');
+            document.getElementById('seo-section').classList.toggle('hidden', tab !== 'seo');
+        }
+
+        // --- USERNAME TRACKER LOGIC ---
+        async function checkUsername() {
+            const name = document.getElementById('usernameInput').value.trim();
+            const resultsDiv = document.getElementById('brandResults');
+            if(!name) return alert("Enter a name first!");
+
+            resultsDiv.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2 text-gray-500">Scanning Platforms...</p></div>';
+
+            try {
+                // LOCAL TEST URL (Change to Render URL after deployment)
+                const response = await fetch(`http://127.0.0.1:5000/check-username?username=${name}`);
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = '';
+                for (const [platform, status] of Object.entries(data)) {
+                    const isAvailable = status === "Available";
+                    resultsDiv.innerHTML += `
+                        <div class="bg-gray-800 p-6 rounded-xl border ${isAvailable ? 'border-green-900' : 'border-red-900'} text-center shadow-lg">
+                            <div class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">${platform}</div>
+                            <div class="${isAvailable ? 'text-green-400' : 'text-red-400'} font-bold text-lg">
+                                <i class="fas ${isAvailable ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${status}
+                            </div>
+                        </div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = '<div class="col-span-full text-red-500 text-center bg-red-900/20 p-4 rounded">Error: Backend is not running! Run app.py first.</div>';
+            }
+        }
+
+        // --- SEO REDIRECT LOGIC ---
+        function generateRedirects() {
+            const broken = document.getElementById('brokenLinks').value.split('\n').map(l => l.trim()).filter(l => l !== "");
+            const active = document.getElementById('activeLinks').value.split('\n').map(l => l.trim()).filter(l => l !== "");
+            
+            if(broken.length === 0 || active.length === 0) return alert("Enter links in both boxes!");
+
+            let htaccess = "RewriteEngine On\n\n# Generated by CreatorSuite AI\n";
+            broken.forEach((link, i) => {
+                const target = active[i] || active[0]; // Maps to match or first active page
+                htaccess += `Redirect 301 ${link} ${target}\n`;
+            });
+
+            document.getElementById('outputCode').innerText = htaccess;
+            document.getElementById('seoResults').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
